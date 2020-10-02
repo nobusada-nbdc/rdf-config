@@ -1,0 +1,8 @@
+- Dataset hoge:dataset1:
+  - a: hoge:Dataset
+  - hoge:hasGene:
+    - gene: Gene  # 同じ文字列のsnakeとCamel
+- Gene hoge:gene1:
+  - a: hoge:Gene
+  - hoge:gene:
+    - hoge_gene: hoge gene

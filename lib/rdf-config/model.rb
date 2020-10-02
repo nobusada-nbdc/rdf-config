@@ -1,4 +1,5 @@
 require 'rdf-config/model/triple'
+require 'rdf-config/model/validator'
 
 class RDFConfig
   class Model
@@ -11,6 +12,7 @@ class RDFConfig
       @subjects = []
 
       generate_triples
+      validate
     end
 
     def each
@@ -42,16 +44,18 @@ class RDFConfig
         if rdf_type_triples.empty?
           rdf_types << nil
         else
+          types = []
           rdf_type_triples.each do |t|
             @bnode_subjects.select { |bn_subj| bn_subj.predicates.include?(t.predicate) }.each do |s|
               bn_obj = s.objects.select { |o| o.blank_node? }.first
               if bn_obj
-                rdf_types << s.types
+                types << t.object_name
               else
-                rdf_types << s.types if s.objects.include?(triple.object)
+                types << t.object_name if s.objects.include?(triple.object)
               end
             end
           end
+          rdf_types << types
         end
       end
 
@@ -74,12 +78,31 @@ class RDFConfig
       @bnode_subjects.select { |s| s.objects.map(&:name) == object_name }.first
     end
 
+    def object_names
+      names = []
+
+      @triples.each do |triple|
+        next if triple.predicate.rdf_type?
+
+        names << triple.object_name
+      end
+
+      names
+    end
+
     def [](idx)
       @triples[idx]
     end
 
     def size
       @size ||= @triples.size
+    end
+
+    def validate
+      validator = Validator.new(self, @config)
+      validator.validate
+
+      raise Config::InvalidConfig, validator.errors.join("\n") if validator.error?
     end
 
     private
@@ -89,9 +112,7 @@ class RDFConfig
       @predicates = []
       @bnode_subjects = []
 
-      @config.model.each do |subject_hash|
-        @subjects << Model::Subject.new(subject_hash, @config.prefix)
-      end
+      @subjects = Graph.new(@config).generate
 
       @subjects.each do |subject|
         @subject = subject
@@ -108,24 +129,17 @@ class RDFConfig
     end
 
     def proc_predicate(predicate)
-      predicate.objects.each_with_index do |object, i|
-        proc_object(predicate, object, i)
+      predicate.objects.each do |object|
+        proc_object(object)
       end
     end
 
-    def proc_object(predicate, object, idx)
+    def proc_object(object)
       if object.blank_node?
         @bnode_subjects << object.value
         proc_subject(object.value)
       else
-        subject_as_object = find_subject(object.value)
-        if subject_as_object.nil?
-          add_triple(Triple.new(@subject, Array.new(@predicates), object))
-        else
-          subject_as_object.add_as_object(@subject.name, object)
-          add_triple(Triple.new(@subject, Array.new(@predicates), subject_as_object))
-          predicate.objects[idx] = subject_as_object
-        end
+        add_triple(Triple.new(@subject, Array.new(@predicates), object))
       end
     end
 

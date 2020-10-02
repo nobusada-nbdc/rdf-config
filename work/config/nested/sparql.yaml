@@ -1,0 +1,10 @@
+sparql:
+  description: Sample data of nested structure.
+  variables:
+    - Person
+    - name
+    - gender
+    - child
+    #- child:
+    #    - foaf:name: child_name
+    #    - foaf:gender: child_gender

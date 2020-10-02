@@ -15,7 +15,11 @@ class RDFConfig
       @config = config
       @opts = opts
 
-      raise SPARQLConfigNotFound, "No SPARQL config found: sparql query name '#{name}'" unless @config.sparql.key?(name)
+      @variables = opts[:variables] if opts.key?(:variables)
+      @parameters = opts[:parameters] if opts.key?(:parameters)
+      if !opts.key?(:check_query_name) || opts[:check_query_name] == true
+        raise SPARQLConfigNotFound, "No SPARQL config found: sparql query name '#{name}'" unless @config.sparql.key?(name)
+      end
     end
 
     def generate
@@ -73,6 +77,35 @@ class RDFConfig
 
     def model
       @model ||= Model.new(@config)
+    end
+
+    def variable_name_for_sparql(variable_name, add_question_mark = false)
+      triple = model.find_by_object_name(variable_name)
+      if triple.nil?
+        if model.subject?(variable_name)
+          sparql_variable_name = variable_name
+        else
+          sparql_variable_name = ''
+        end
+      else
+        case triple.object
+        when Model::Subject
+          object_names = triple.object.objects.map(&:name)
+          sparql_variable_name = if object_names.include?(variable_name)
+                                   triple.subject.name
+                                 else
+                                   triple.object.as_object_name(triple.subject.name)
+                                 end
+        else
+          sparql_variable_name = triple.object.name
+        end
+      end
+
+      if !sparql_variable_name.empty? && add_question_mark
+        "?#{sparql_variable_name}"
+      else
+        sparql_variable_name
+      end
     end
 
     def run

@@ -25,6 +25,21 @@ class RDFConfig
         }.join(separator)
       end
 
+      def label_object(object)
+        case object
+        when Model::URI
+          object.value
+        when Model::Literal
+          object.value.inspect
+        when Model::Subject
+          color_subject(object.name)
+        when Model::ValueList
+          "[#{object.value.map { |obj| label_object(obj) }.join(', ')}]"
+        else
+          'N/A'
+        end
+      end
+
       def generate
         seen = {}
         rdf_type = ''
@@ -58,16 +73,7 @@ class RDFConfig
 
           # output object
           object_color = color_object(triple.object_name)
-          object_label = case triple.object
-                         when Model::URI
-                           triple.object_value
-                         when Model::Literal
-                           triple.object_value.inspect
-                         when Model::Subject
-                           color_subject(triple.object_value)
-                         else
-                           'N/A'
-                         end
+          object_label = label_object(triple.object)
 
           if triple.last_predicate?(@model)
             if triple.last_object?(@model)

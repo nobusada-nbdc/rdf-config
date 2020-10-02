@@ -1,0 +1,6 @@
+- []:
+  #- a: my:Blank
+  - my:pred1:
+      - obj1: "data1"
+  - my:pred2:
+      - obj2: "data2"

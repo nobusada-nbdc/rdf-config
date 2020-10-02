@@ -1,0 +1,4 @@
+sparql:
+  description: This is test data for blank node is top level.
+  #variables: [obj1, obj2]
+  variables: [VarName, obj1, obj2]

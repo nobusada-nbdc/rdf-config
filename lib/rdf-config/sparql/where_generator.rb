@@ -1,7 +1,9 @@
+require 'rdf-config/sparql'
+
 class RDFConfig
   class SPARQL
     class WhereGenerator < SPARQL
-      INDENT_TEXT = '    '.freeze
+      @@indent_text = '    '
       PROPERTY_PATH_SEP = ' / '.freeze
 
       class Triple
@@ -91,7 +93,12 @@ class RDFConfig
         end
 
         def to_sparql
-          "?#{name}"
+          case name
+          when Array
+            name.to_s
+          else
+            "?#{name}"
+          end
         end
 
         def rdf_type_varname
@@ -106,10 +113,11 @@ class RDFConfig
       class BlankNode
         include RDFType
 
-        attr_reader :rdf_types
+        attr_reader :predicate_routes, :rdf_types
 
-        def initialize(bnode_id)
+        def initialize(bnode_id, predicate_routes)
           @bnode_id = bnode_id
+          @predicate_routes = predicate_routes
         end
 
         def name
@@ -132,20 +140,32 @@ class RDFConfig
       def initialize(config, opts = {})
         super
 
+        if opts.key?(:output_values_line) && opts[:output_values_line] == false
+          @output_values_line = false
+        else
+          @output_values_line = true
+        end
+
+        if opts.key?(:indent_text)
+          @@indent_text = opts[:indent_text]
+        end
+
         @values_lines = []
         @required_triples = []
         @optional_triples = []
 
         @variable = {}
-        @blank_node = {}
+        @blank_nodes = []
 
         @bnode_number = 1
         @depth = 1
+
+        @target_triple = nil
       end
 
       def generate
         generate_triples
-        add_values_lines
+        add_values_lines if @output_values_line
 
         lines = required_lines
         lines += optional_lines
@@ -164,55 +184,47 @@ class RDFConfig
 
       def generate_triples
         variables.each do |variable_name|
-          next if model.subject?(variable_name)
+          generate_triple_by_variable(variable_name_for_sparql(variable_name))
+        end
 
-          triple_in_model = model.find_by_object_name(variable_name)
-          next if triple_in_model.nil?
+        @required_triples = generate_rdf_type_triples + @required_triples
+      end
 
-          object = triple_in_model.object
-          if object.is_a?(RDFConfig::Model::Subject)
-            subject = variable(object.name)
-            subject.rdf_types = object.types
-            add_triple(Triple.new(subject, nil, variable('')), false)
-          end
+      def generate_triple_by_variable(variable_name)
+        @target_triple = model.find_by_object_name(variable_name)
+        return if @target_triple.nil?
 
-          if triple_in_model.bnode_connecting?
-            generate_triples_with_bnode(triple_in_model)
-          else
-            generate_triple_without_bnode(triple_in_model)
-          end
+        if @target_triple.bnode_connecting?
+          generate_triples_with_bnode
+        else
+          generate_triple_without_bnode
         end
       end
 
-      def generate_triple_without_bnode(triple_in_model)
-        subject = variable(triple_in_model.subject.name)
-        subject.rdf_types = @model.find_subject(subject.name).types
-
-        add_triple(Triple.new(subject,
-                              triple_in_model.predicates.first.uri,
-                              variable(triple_in_model.object.name)),
-                   optional_phrase?(triple_in_model.predicate))
+      def generate_triple_without_bnode
+        add_triple(Triple.new(subject_instance(@target_triple.subject.types),
+                              @target_triple.predicates.first.uri,
+                              variable_instance(@target_triple.object_name)),
+                   optional_phrase?(@target_triple.predicate))
       end
 
-      def generate_triples_with_bnode(triple_in_model)
-        bnode_rdf_types = model.bnode_rdf_types(triple_in_model)
+      def generate_triples_with_bnode
+        bnode_rdf_types = model.bnode_rdf_types(@target_triple)
 
         if use_property_path?(bnode_rdf_types)
-          add_triple(Triple.new(variable(triple_in_model.subject.name),
-                                triple_in_model.property_path(PROPERTY_PATH_SEP),
-                                variable(triple_in_model.object_name)),
-                     optional_phrase?(triple_in_model.predicate)
+          add_triple(Triple.new(subject_instance,
+                                @target_triple.property_path(PROPERTY_PATH_SEP),
+                                variable_instance(@target_triple.object_name)),
+                     optional_phrase?(@target_triple.predicate)
           )
         else
-          generate_triples_with_bnode_rdf_types(triple_in_model, bnode_rdf_types)
+          generate_triples_with_bnode_rdf_types(bnode_rdf_types)
         end
       end
 
-      def generate_triples_with_bnode_rdf_types(triple_in_model, bnode_rdf_types)
-        predicates = triple_in_model.predicates
-
-        subject = variable(triple_in_model.subject_name)
-        subject.rdf_types = triple_in_model.subject.types
+      def generate_triples_with_bnode_rdf_types(bnode_rdf_types)
+        subject = subject_instance(@target_triple.subject.types)
+        predicates = @target_triple.predicates
 
         bnode_predicates = []
         (0...predicates.size - 1).each do |i|
@@ -220,7 +232,7 @@ class RDFConfig
           rdf_types = bnode_rdf_types[i]
           next if rdf_types.nil?
 
-          object = blank_node(predicates[0..i])
+          object = blank_node(predicates[0..i].map(&:uri), bnode_rdf_types[i])
           add_triple(Triple.new(subject,
                                 bnode_predicates.map(&:uri).join(PROPERTY_PATH_SEP),
                                 object),
@@ -230,11 +242,77 @@ class RDFConfig
           subject.rdf_types = bnode_rdf_types[i]
         end
 
-        object = variable(triple_in_model.object_name)
+        object = variable_instance(@target_triple.object_name)
         add_triple(Triple.new(subject,
                               (bnode_predicates + [predicates.last]).map(&:uri).join(PROPERTY_PATH_SEP),
                               object),
                    optional_phrase?(predicates.last))
+      end
+
+      def generate_rdf_type_triples
+        triples = rdf_type_triples_by_subjects
+        subjects = (@required_triples + @optional_triples).map(&:subject).uniq
+
+        (variables - subjects.map(&:name)).each do |variable_name|
+          triple = rdf_type_triple_by_variable(variable_name)
+          triples << rdf_type_triple_by_variable(variable_name) if triple.is_a?(Triple)
+        end
+
+        triples
+      end
+
+      def rdf_type_triples_by_subjects
+        triples = []
+
+        subjects = (@required_triples + @optional_triples).map(&:subject).uniq
+        subjects.each do |subject|
+          triples << Triple.new(subject, 'a', subject) if subject.has_rdf_type?
+        end
+
+        triples
+      end
+
+      def rdf_type_triple_by_variable(variable_name)
+        triple_in_model = model.find_by_object_name(variable_name)
+        return if triple_in_model.nil?
+
+        rdf_type_triple_by_object(triple_in_model.object, variable_name)
+      end
+
+      def rdf_type_triple_by_object(object_in_model, variable_name)
+        case object_in_model
+        when Model::Subject
+          rdf_type_triple_by_subject(object_in_model, variable_name)
+        when Model::ValueList
+          rdf_type_triple_by_value_list(object_in_model.value, variable_name)
+        end
+      end
+
+      def rdf_type_triple_by_subject(subject_in_model, variable_name)
+        if subject_in_model.types.nil?
+          nil
+        else
+          variable = variable_instance(variable_name)
+          variable.rdf_types = subject_in_model.types
+          Triple.new(variable, 'a', variable)
+        end
+      end
+
+      def rdf_type_triple_by_value_list(value_list, variable_name)
+        rdf_types = []
+        value_list.each do |v|
+          next if !v.is_a?(Model::Subject) || v.types.empty?
+
+          rdf_types << v.types
+        end
+
+        if rdf_types.empty?
+          nil
+        else
+          variable = variable_instance(variable_name)
+          variable.rdf_types = rdf_types.flatten
+          Triple.new(variable, 'a', variable)
+        end
       end
 
       def add_values_lines
@@ -264,15 +342,11 @@ class RDFConfig
 
       def required_lines
         lines = []
-        @model.subjects.each do |subject_in_model|
-          subjects = @required_triples.map(&:subject).select { |subject| subject.name == subject_in_model.name }
-          next if subjects.empty?
 
-          lines += lines_by_subject(subjects.first)
-        end
-
-        @required_triples.map(&:subject).select { |subject| subject.is_a?(BlankNode) }.uniq.each do |subject|
-          lines += lines_by_subject(subject)
+        [Variable, BlankNode].each do |subject_class|
+          @required_triples.map(&:subject).select { |subject| subject.is_a?(subject_class) }.uniq.each do |subject|
+            lines += lines_by_subject(subject)
+          end
         end
 
         lines
@@ -283,11 +357,6 @@ class RDFConfig
 
         triples = @required_triples.select { |triple| triple.subject == subject }
         return [] if triples.empty?
-
-        if subject.has_rdf_type?
-          triples = [Triple.new(subject, 'a', subject)] + triples
-          triples.reject! { |triple| triple.predicate.nil? }
-        end
 
         triples.each do |triple|
           lines << triple.to_sparql(indent,
@@ -312,7 +381,7 @@ class RDFConfig
       end
 
       def values_line(variavale_name, value)
-        "#{INDENT_TEXT}VALUES #{variavale_name} { #{value} }"
+        "#{@@indent_text}VALUES #{variavale_name} { #{value} }"
       end
 
       def use_property_path?(bnode_rdf_types)
@@ -335,7 +404,28 @@ class RDFConfig
         end
       end
 
-      def variable(variable_name)
+      def subject_in_model_by_variable_instance(variable)
+          @model.find_subject(variable.name) ||
+            @model.subjects.select { |subject| subject.as_object.values.map(&:name).include?(variable.name) }.first
+      end
+
+      def triples_has_subject?(triples, subject)
+        !triples.map(&:subject).select { |subj| subj == subject }.empty?
+      end
+
+      def subject_instance(rdf_types = nil)
+        subject = @target_triple.subject
+        if subject.blank_node? && subject.types.size > 1
+          blank_node([], subject.types)
+        else
+          v_inst = variable_instance(variable_name_for_sparql(subject.name))
+          v_inst.rdf_types = rdf_types if !rdf_types.nil?
+
+          v_inst
+        end
+      end
+
+      def variable_instance(variable_name)
         if @variable.key?(variable_name)
           @variable[variable_name]
         else
@@ -347,17 +437,19 @@ class RDFConfig
         @variable[variable_name] = Variable.new(variable_name)
       end
 
-      def blank_node(predicates)
-        if @blank_node.key?(predicates)
-          @blank_node[predicates]
+      def blank_node(predicate_routes, rdf_types)
+        bnodes = @blank_nodes.select { |bnode| bnode.predicate_routes == predicate_routes && bnode.rdf_types == rdf_types }
+        if bnodes.empty?
+          add_blank_node(predicate_routes, rdf_types)
         else
-          add_blank_node(predicates)
+          bnodes.first
         end
       end
 
-      def add_blank_node(predicates)
-        bnode = BlankNode.new(@bnode_number)
-        @blank_node[predicates] = bnode
+      def add_blank_node(predicate_routes, rdf_types)
+        bnode = BlankNode.new(@bnode_number, predicate_routes)
+        bnode.rdf_types = rdf_types
+        @blank_nodes << bnode
         @bnode_number += 1
 
         bnode
@@ -376,7 +468,7 @@ class RDFConfig
       end
 
       def indent(depth_increment = 0)
-        "#{INDENT_TEXT * (@depth + depth_increment)}"
+        "#{@@indent_text * (@depth + depth_increment)}"
       end
     end
   end

@@ -11,12 +11,14 @@ class RDFConfig
           instance_varname = "@#{name}"
 
           instance_variable_get(instance_varname) ||
-              instance_variable_set(instance_varname, YAML.load_file(config_file_path(name)))
+            instance_variable_set(instance_varname, YAML.load_file(config_file_path(name)))
         rescue Psych::SyntaxError => e
           raise SyntaxError, "Invalid YAML format #{e.message}"
         end
       end
     end
+
+    attr_reader :config_dir
 
     def initialize(config_dir, opts = {})
       raise ConfigNotFound, "Config directory (#{config_dir}) does not exist." unless File.exist?(config_dir)
@@ -35,7 +37,7 @@ class RDFConfig
     end
 
     class ConfigNotFound < StandardError; end
-
     class SyntaxError < StandardError; end
+    class InvalidConfig < StandardError; end
   end
 end

@@ -1,0 +1,14 @@
+endpoint: https://myendpoint.org/sparql
+---
+endpoint:
+  - http://example.org/sparql  # プライマリの SPARQL エンドポイント
+  - graph:
+      - http://example.org/graph/1
+      - http://example.org/graph/2
+      - http://example.org/graph/3
+
+another_endpoint:
+  - http://another.org/sparql  # 予備の SPARQL エンドポイント
+  - graph:
+      - http://another.org/graph/A
+      - http://another.org/graph/B

@@ -1,0 +1,3 @@
+sparql:
+  description: Sample data of case sensitive.
+  variables: [Dataset, gene, hoge_gene]

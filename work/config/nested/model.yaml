@@ -1,0 +1,10 @@
+- Person my:tanaka:
+    - a: foaf:Person
+    - foaf:name:
+        - name: TANAKA Taro
+    - foaf:mbox:
+        - mail_address: tanaka@mysite.com
+    - foaf:gender:
+        - gender: male
+    - my:child:
+        - child: Person

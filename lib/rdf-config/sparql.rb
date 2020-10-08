@@ -3,6 +3,7 @@ require 'rdf-config/sparql/sparql_generator'
 require 'rdf-config/sparql/comment_generator'
 require 'rdf-config/sparql/prefix_generator'
 require 'rdf-config/sparql/select_generator'
+require 'rdf-config/sparql/dataset_generator'
 require 'rdf-config/sparql/where_generator'
 
 class RDFConfig
@@ -24,6 +25,7 @@ class RDFConfig
       sparql_generator.add_generator(CommentGenerator.new(@config, @opts))
       sparql_generator.add_generator(PrefixGenerator.new(@config, @opts))
       sparql_generator.add_generator(SelectGenerator.new(@config, @opts))
+      sparql_generator.add_generator(DatasetGenerator.new(@config, @opts))
       sparql_generator.add_generator(WhereGenerator.new(@config, @opts))
 
       sparql_generator.generate.join("\n")
@@ -53,14 +55,15 @@ class RDFConfig
     end
 
     def endpoints
-      case @config.endpoint['endpoint']
-      when String
-        [@config.endpoint['endpoint']]
-      when Array
-        @config.endpoint['endpoint']
+      if @opts.key?(:endpoint)
+        endpoint_opts = { name: @opts[:endpoint] }
       else
-        []
+        endpoint_opts = {}
       end
+      @endpoint ||= Endpoint.new(@config, endpoint_opts)
+      @endpoint.endpoints
+    rescue
+      []
     end
 
     def endpoint

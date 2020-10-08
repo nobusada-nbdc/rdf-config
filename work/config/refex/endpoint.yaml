@@ -1,0 +1,10 @@
+endpoint:
+  - https://integbio.jp/rdf/sparql
+  - graph:
+    - http://refex.dbcls.jp/rdf/fantom5
+    - http://refex.dbcls.jp/rdf/genechip
+---
+endpoint:
+  - https://integbio.jp/rdf/sparql
+---
+endpoint: https://integbio.jp/rdf/sparql

@@ -185,7 +185,8 @@ class RDFConfig
       end
 
       def loop_to_subject?(object)
-        current_subject == object
+        #current_subject == object
+        false
       end
 
       def move_to_subject

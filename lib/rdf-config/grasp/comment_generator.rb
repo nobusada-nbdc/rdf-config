@@ -71,7 +71,13 @@ class RDFConfig
             end
           end
 
-          lines << "#{INDENT}?#{subject.name} :#{triple.object.name} ?#{triple.object.name} ."
+          if subject.used_as_object?
+            subject.as_object.values.each do |object|
+              lines << "#{INDENT}?#{object.name} :#{triple.object_name} ?#{triple.object_name} ."
+            end
+          else
+            lines << "#{INDENT}?#{subject.name} :#{triple.object_name} ?#{triple.object_name} ."
+          end
         end
         lines << '}'
 

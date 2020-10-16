@@ -27,6 +27,10 @@ class RDFConfig
         !@errors.empty?
       end
 
+      def error_message
+        %Q/ERROR: Invalid configuration\n#{errors.map { |msg| "  #{msg}" }.join("\n")}/
+      end
+
       private
 
       def validate_subject(subject)
@@ -41,13 +45,26 @@ class RDFConfig
         @num_subject_name.select { |subject_name, num_subject_name| num_subject_name > 1 }.keys.each do |subject_name|
           add_error(%/Duplicate subject name (#{subject_name}) in model.yaml file./)
         end
+
+        @num_subject_name.keys.each do |subject_name|
+          if @num_variable.key?(subject_name) && @num_variable[subject_name] == 1
+            add_error(%/Duplicate variable name (#{subject_name}) in model.yaml file./)
+          end
+        end
       end
 
       def validate_predicate(predicate)
         validate_prefix(predicate.name)
         predicate.objects.each do |object|
           if predicate.rdf_type?
-            validate_prefix(object.name)
+            case object.name
+            when Array
+              object.name.each do |rdf_type|
+                validate_prefix(rdf_type.to_s)
+              end
+            else
+              validate_prefix(object.name.to_s)
+            end
           else
             validate_object(object)
           end
@@ -55,13 +72,13 @@ class RDFConfig
       end
 
       def validate_object(object)
-        add_variable_name(object.name) unless object.is_a?(BlankNode) || object.is_a?(Subject)
+        add_variable_name(object.name) if !object.is_a?(BlankNode) && !object.is_a?(Subject)
         validate_prefix(object.value) if object.is_a?(URI)
       end
 
       def validate_resource_class(subject)
         return if subject.blank_node?
-        
+
         add_error(%/Subject (#{subject.name}) has no rdf:type./) if subject.types.empty?
       end
 
@@ -78,7 +95,7 @@ class RDFConfig
 
       def validate_variable
         @num_variable.select { |k, v| v > 1 }.each do |variable_name, num_variable|
-          add_error(%/Duplicate variable (#{variable_name}) in model.yaml file./)
+          add_error(%/Duplicate variable name (#{variable_name}) in model.yaml file./)
         end
       end
 

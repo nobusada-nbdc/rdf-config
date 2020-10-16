@@ -4,7 +4,5 @@ sparql:
     - Person
     - name
     - gender
+    - mail_address
     - child
-    #- child:
-    #    - foaf:name: child_name
-    #    - foaf:gender: child_gender

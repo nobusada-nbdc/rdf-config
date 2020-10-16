@@ -192,7 +192,7 @@ class RDFConfig
 
       def generate_triple_by_variable(variable_name)
         @target_triple = model.find_by_object_name(variable_name)
-        return if @target_triple.nil?
+        return if @target_triple.nil? || @target_triple.subject.name == variable_name
 
         if @target_triple.bnode_connecting?
           generate_triples_with_bnode
@@ -203,9 +203,18 @@ class RDFConfig
 
       def generate_triple_without_bnode
         add_triple(Triple.new(subject_instance(@target_triple.subject.types),
-                              @target_triple.predicates.first.uri,
+                              predicate_uri,
                               variable_instance(@target_triple.object_name)),
                    optional_phrase?(@target_triple.predicate))
+      end
+
+      def predicate_uri
+        predicate = @target_triple.predicates.first
+        if @target_triple.subject == @target_triple.object && !predicate.rdf_type?
+          "#{predicate.uri}*"
+        else
+          predicate.uri
+        end
       end
 
       def generate_triples_with_bnode

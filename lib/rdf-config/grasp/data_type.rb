@@ -13,7 +13,7 @@ class RDFConfig
             lines << "#{INDENT}#{subject.name}: String!" unless subject.used_as_object?
             subjects << subject.name
           end
-          lines << "#{INDENT}#{triple.object.name}: #{data_type_desc(triple)}"
+          lines << "#{INDENT}#{triple.object_name}: #{data_type_desc(triple)}"
         end
 
         lines

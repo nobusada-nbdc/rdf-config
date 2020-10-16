@@ -102,7 +102,7 @@ class RDFConfig
       validator = Validator.new(self, @config)
       validator.validate
 
-      raise Config::InvalidConfig, validator.errors.join("\n") if validator.error?
+      raise Config::InvalidConfig, validator.error_message if validator.error?
     end
 
     private

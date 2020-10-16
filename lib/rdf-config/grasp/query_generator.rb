@@ -22,7 +22,7 @@ class RDFConfig
 
           case triple.object
           when Model::Subject
-            lines << "#{INDENT * 2}#{triple.object.name} {"
+            lines << "#{INDENT * 2}#{triple.object_name} {"
             lines += variable_name_lines_by_subject(triple.object, 3)
             lines << "#{INDENT * 2}}"
           else

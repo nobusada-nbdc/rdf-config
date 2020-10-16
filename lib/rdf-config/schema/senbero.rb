@@ -56,7 +56,10 @@ class RDFConfig
             # output subject
             subject_class = subject.type
             subject_color = color_subject(subject.name)
-            puts "#{subject_color} (#{subject_class})"
+            subject_str   = subject_color
+            subject_str  += " [#{subject_class}]" unless subject_class.empty?
+            subject_str  += subject.name == [] ? " (blank_node)" : " (#{subject.value})"
+            puts subject_str
           end
 
           unless seen[subject.name].key?("#{rdf_type}:#{triple.property_path}")

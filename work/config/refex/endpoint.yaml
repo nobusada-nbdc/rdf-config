@@ -4,7 +4,7 @@ endpoint:
     - http://refex.dbcls.jp/rdf/fantom5
     - http://refex.dbcls.jp/rdf/genechip
 ---
-endpoint:
+endpoint_alt:
   - https://integbio.jp/rdf/sparql
 ---
-endpoint: https://integbio.jp/rdf/sparql
+endpoint_mirror: https://integbio.jp/rdf/sparql

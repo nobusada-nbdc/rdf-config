@@ -401,6 +401,19 @@ class RDFConfig
       def has_data_type?
         /\A".*"\^\^.+\z/ =~ @value.to_s.strip
       end
+
+      def rdf_data_type
+        case @value
+        when String
+          if /\^\^(?<prefix>\w+)\:(?<local_part>.+)\z/ =~ value
+            "#{prefix}:#{local_part}"
+          else
+            'xsd:string'
+          end
+        else
+          "xsd:#{@value.class.to_s.downcase}"
+        end
+      end
     end
 
     class ValueList < RDFConfig::Model::Object

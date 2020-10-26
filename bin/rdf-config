@@ -24,6 +24,7 @@ args = GetoptLong.new(
   [ '--grasp',           GetoptLong::OPTIONAL_ARGUMENT ],
   [ '--stanza',          GetoptLong::OPTIONAL_ARGUMENT ],
   [ '--stanza_rb',       GetoptLong::OPTIONAL_ARGUMENT ],
+  [ '--shex',            GetoptLong::OPTIONAL_ARGUMENT ]
 )
 
 begin
@@ -51,6 +52,8 @@ begin
     when /--stanza/
       opts[:mode] = :stanza_js
       opts[:stanza_name] = value
+    when /--shex/
+      opts[:mode] = :shex
     end
   end
 rescue
@@ -65,7 +68,6 @@ if opts[:config_dir] and opts[:mode]
     rdf_config.exec(opts)
   rescue => e
     STDERR.puts e.message
-    #STDERR.puts e.backtrace
     exit(1)
   end
 else

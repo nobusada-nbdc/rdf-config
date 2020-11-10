@@ -5,12 +5,10 @@ class RDFConfig
   class Model
     include Enumerable
 
-    attr_reader :subjects
-
     def initialize(config)
       @config = config
-      @subjects = []
-
+      @graph = Graph.new(@config)
+      @graph.generate
       generate_triples
       validate
     end
@@ -20,7 +18,7 @@ class RDFConfig
     end
 
     def find_subject(subject_name)
-      @subjects.select { |subject| subject.name == subject_name }.first
+      subjects.select { |subject| subject.name == subject_name }.first
     end
 
     def subject?(variable_name)
@@ -63,7 +61,12 @@ class RDFConfig
     end
 
     def find_object(object_name)
-      @triples.map(&:object).select { |object| object.name == object_name }.first
+      object = @triples.map(&:object).select { |object| object.name == object_name }.first
+      if object.nil?
+        object = find_subject(object_value[object_name])
+      end
+
+      object
     end
 
     def find_by_object_name(object_name)
@@ -90,6 +93,35 @@ class RDFConfig
       names
     end
 
+    def subjects
+      @graph.subjects
+    end
+
+    def object_value
+      @graph.object_value
+    end
+
+    def parent_variable(object_name)
+      triple = find_by_object_name(object_name)
+      return nil if triple.nil? || !triple.subject.used_as_object?
+
+      triple.subject.as_object.values.map(&:name).uniq.first
+    end
+
+    def parent_variables(object_name)
+      variables = []
+      loop do
+        variable_name = parent_variable(object_name)
+        break if variable_name.nil?
+
+        variables << variable_name
+        object_name = variable_name
+        parent_variable(object_name)
+      end
+
+      variables
+    end
+
     def [](idx)
       @triples[idx]
     end
@@ -112,9 +144,7 @@ class RDFConfig
       @predicates = []
       @bnode_subjects = []
 
-      @subjects = Graph.new(@config).generate
-
-      @subjects.each do |subject|
+      subjects.each do |subject|
         @subject = subject
         proc_subject(subject)
       end

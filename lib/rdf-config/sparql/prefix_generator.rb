@@ -53,7 +53,7 @@ class RDFConfig
 
         parameters.each do |var_name, value|
           object = model.find_object(var_name)
-          next unless object.is_a?(RDFConfig::Model::URI)
+          next if !object.is_a?(Model::URI) && !object.is_a?(Model::Subject)
 
           if /\A(\w+):(.+)/ =~ value && !prefixes.include?($1)
             prefixes << $1

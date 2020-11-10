@@ -16,6 +16,10 @@ class RDFConfig
       @config = config
       @opts = opts
 
+      sparql_query_name, endpoint_name = @opts[:sparql_query_name].to_s.split(':')
+      @opts[:sparql_query_name] = sparql_query_name.nil? ? DEFAULT_NAME : sparql_query_name
+      @opts[:endpoint_name] = endpoint_name unless endpoint_name.nil?
+
       @variables = opts[:variables] if opts.key?(:variables)
       @parameters = opts[:parameters] if opts.key?(:parameters)
       if !opts.key?(:check_query_name) || opts[:check_query_name] == true
@@ -60,8 +64,8 @@ class RDFConfig
 
     def endpoints
       begin
-        if @opts.key?(:endpoint)
-          endpoint_opts = { name: @opts[:endpoint]}
+        if @opts.key?(:endpoint_name)
+          endpoint_opts = { name: @opts[:endpoint_name] }
         else
           endpoint_opts = {}
         end

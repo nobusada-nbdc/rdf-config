@@ -59,7 +59,7 @@ class RDFConfig
     end
 
     class Graph
-      attr_reader :subjects
+      attr_reader :subjects, :object_value
 
       def initialize(config, opts = {})
         @config = config
@@ -67,6 +67,7 @@ class RDFConfig
         @subject_names = config.model.map { |hash| hash.keys }.flatten
 
         @subjects = []
+        @object_value = {}
 
         @target_subject = nil
       end
@@ -112,6 +113,7 @@ class RDFConfig
         when Hash
           name = object_data.keys.first
           value = object_data[name]
+          @object_value[name] = value
         when String
           # object is object value, name is not available
           name = nil

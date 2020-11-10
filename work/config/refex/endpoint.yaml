@@ -3,8 +3,9 @@ endpoint:
   - graph:
     - http://refex.dbcls.jp/rdf/fantom5
     - http://refex.dbcls.jp/rdf/genechip
----
-endpoint_alt:
-  - https://integbio.jp/rdf/sparql
----
-endpoint_mirror: https://integbio.jp/rdf/sparql
+
+another_endpoint:
+  - http://another.org/sparql
+  - graph:
+      - http://another.org/graph/A
+      - http://another.org/graph/B

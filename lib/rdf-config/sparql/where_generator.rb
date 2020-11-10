@@ -102,7 +102,7 @@ class RDFConfig
         end
 
         def rdf_type_varname
-          "#{to_sparql}_class"
+          "#{to_sparql}Class"
         end
 
         def ==(other)
@@ -129,7 +129,7 @@ class RDFConfig
         end
 
         def rdf_type_varname
-          "?#{name}_class"
+          "?#{name}Class"
         end
 
         def ==(other)
@@ -183,7 +183,7 @@ class RDFConfig
       private
 
       def generate_triples
-        variables.each do |variable_name|
+        variables_for_where.each do |variable_name|
           generate_triple_by_variable(variable_name_for_sparql(variable_name))
         end
 
@@ -478,6 +478,19 @@ class RDFConfig
 
       def indent(depth_increment = 0)
         "#{@@indent_text * (@depth + depth_increment)}"
+      end
+
+      def hidden_variables
+        variable_names = []
+        variables.each do |variable_name|
+          variable_names += model.parent_variables(variable_name)
+        end
+
+        variable_names.flatten.uniq
+      end
+
+      def variables_for_where
+        (variables + hidden_variables).uniq
       end
     end
   end

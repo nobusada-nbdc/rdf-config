@@ -152,6 +152,7 @@ class RDFConfig
     end
 
     class Subject
+      attr_accessor :sparql_varname
       attr_reader :name, :value, :predicates, :as_object
 
       def initialize(subject_hash, prefix_hash = {})
@@ -167,6 +168,8 @@ class RDFConfig
         end
 
         @predicates = []
+
+        @sparql_varname = @name
       end
 
       def types
@@ -282,7 +285,7 @@ class RDFConfig
     end
 
     class Object
-      attr_reader :name, :value
+      attr_reader :name, :value, :sparql_varname
 
       def initialize(object, prefix_hash = {})
         case object
@@ -293,6 +296,8 @@ class RDFConfig
           @name = object
           @value = nil
         end
+
+        @sparql_varname = @name
       end
 
       def type

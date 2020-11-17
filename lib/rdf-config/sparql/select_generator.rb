@@ -3,6 +3,8 @@ class RDFConfig
     class SelectGenerator < SPARQL
       def initialize(config, opts = {})
         super
+
+        prepare_sparql_variable_name
       end
 
       def generate

@@ -161,6 +161,17 @@ class RDFConfig
         @depth = 1
 
         @target_triple = nil
+
+        prepare_sparql_variable_name
+
+        @property_path_map = {}
+        variables.each do |variable_name|
+          triple = model.find_by_object_name(variable_name)
+          next if triple.nil?
+
+          @property_path_map[triple.object_name] = model.property_path(triple.object_name)
+          @property_path_map[variable_name] = model.property_path(triple.object_name)
+        end
       end
 
       def generate
@@ -194,7 +205,7 @@ class RDFConfig
         @target_triple = model.find_by_object_name(variable_name)
         return if @target_triple.nil? || @target_triple.subject.name == variable_name
 
-        if @target_triple.bnode_connecting?
+        if @target_triple.bnode_connecting? && model.same_property_path_exist?(variable_name)
           generate_triples_with_bnode
         else
           generate_triple_without_bnode
@@ -202,9 +213,16 @@ class RDFConfig
       end
 
       def generate_triple_without_bnode
-        add_triple(Triple.new(subject_instance(@target_triple.subject.types),
-                              predicate_uri,
-                              variable_instance(@target_triple.object_name)),
+        object_name = @target_triple.object_name
+        return unless @property_path_map.key?(object_name)
+
+        subject = subject_by_object_name(object_name)
+        return if !variables.include?(subject.name) && !variables.include?(subject.as_object.values.map(&:name).first)
+
+        property_paths = model.property_path(object_name, subject.name)
+        add_triple(Triple.new(subject_instance(subject, subject.types),
+                              property_paths.join(PROPERTY_PATH_SEP),
+                              variable_instance(@target_triple.object.sparql_varname)),
                    optional_phrase?(@target_triple.predicate))
       end
 
@@ -221,7 +239,7 @@ class RDFConfig
         bnode_rdf_types = model.bnode_rdf_types(@target_triple)
 
         if use_property_path?(bnode_rdf_types)
-          add_triple(Triple.new(subject_instance,
+          add_triple(Triple.new(subject_instance(@target_triple.subject),
                                 @target_triple.property_path(PROPERTY_PATH_SEP),
                                 variable_instance(@target_triple.object_name)),
                      optional_phrase?(@target_triple.predicate)
@@ -232,7 +250,7 @@ class RDFConfig
       end
 
       def generate_triples_with_bnode_rdf_types(bnode_rdf_types)
-        subject = subject_instance(@target_triple.subject.types)
+        subject = subject_instance(@target_triple.subject, @target_triple.subject.types)
         predicates = @target_triple.predicates
 
         bnode_predicates = []
@@ -422,8 +440,12 @@ class RDFConfig
         !triples.map(&:subject).select { |subj| subj == subject }.empty?
       end
 
-      def subject_instance(rdf_types = nil)
-        subject = @target_triple.subject
+      def subject_instance(subject, rdf_types = nil)
+        if subject.is_a?(Array)
+          rdf_types = subject
+          subject = @target_triple.subject
+        end
+
         if subject.blank_node? && subject.types.size > 1
           blank_node([], subject.types)
         else
@@ -490,7 +512,27 @@ class RDFConfig
       end
 
       def variables_for_where
-        (variables + hidden_variables).uniq
+        variables
+      end
+
+      def subject_by_object_name(object_name)
+        object_name_for_subject = nil
+        model.parent_variables(object_name).reverse.each do |variable_name|
+          object_name_for_subject = variable_name
+          break if variables.include?(variable_name)
+
+          triple = model.find_by_object_name(variable_name)
+          break if !triple.nil? && variables.include?(triple.object.name)
+        end
+
+        if object_name_for_subject.nil?
+          subject = model.subjects.first
+        else
+          subject = model.find_object(object_name_for_subject)
+          subject = model.subjects.first if subject.nil?
+        end
+
+        subject
       end
     end
   end

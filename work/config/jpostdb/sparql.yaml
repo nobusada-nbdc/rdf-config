@@ -1,24 +1,22 @@
 sparql:
   description: get proteins in a dataset
   parameters:
-    #JpostDataset: jpostdb:DS810_1
-    jpost_dataset: jpostdb:DS810_1
-  #variables: [JpostDataset, taxonomy, uniprot, Protein]
-  variables: [jpost_dataset, taxonomy, uniprot, protein]
+    JpostDataset: jpostdb:DS810_1
+  variables: [JpostDataset, taxonomy, uniprot, Protein]
 
 sparql_obj_test_1:
   description: get proteins in a dataset
-  #variables: [Protein, peptide]
   variables: [protein, peptide]
 
 sparql_obj_test_2:
   description: get proteins in a dataset
-  #variables: [Protein, Peptide]
-  variables: [protein, peptide]
+  variables: [Protein, Peptide]
 
 peptide_mapping:
   description: peptide mapping
   parameters:
     protein_label: "Q9NYF8"
-  #variables: [protein_label, Protein, Peptide, aa_sequence, begin, end]
-  variables: [protein_label, protein, peptide, aa_sequence, begin, end]
+  variables: [protein_label, Protein, Peptide, aa_sequence, begin, end]
+
+same_property_path:
+  variables: [JpostDataset, PeptideSpectrumMatch, retention_time, jpost_score_in_psm, charge_state]

@@ -97,23 +97,24 @@ class RDFConfig
           sparql_variable_name = ''
         end
       else
-        case triple.object
-        when Model::Subject
-          object_names = triple.object.objects.map(&:name)
-          sparql_variable_name = if object_names.include?(variable_name)
-                                   triple.subject.name
-                                 else
-                                   triple.object.as_object_name(triple.subject.name)
-                                 end
-        else
-          sparql_variable_name = triple.object.name
-        end
+        sparql_variable_name = triple.object.sparql_varname
       end
 
       if !sparql_variable_name.empty? && add_question_mark
         "?#{sparql_variable_name}"
       else
         sparql_variable_name
+      end
+    end
+
+    def prepare_sparql_variable_name
+      variables.each do |variable_name|
+        next if model.subject?(variable_name)
+
+        triple = model.find_by_object_name(variable_name)
+        if triple.object.is_a?(Model::Subject)
+          triple.object.sparql_varname = variable_name
+        end
       end
     end
 

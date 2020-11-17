@@ -1,0 +1,9 @@
+sparql:
+  description: Obtain taxonomy ID and preferred label of a bioresource 
+  variables: [Culture, nbrc_id, clade, name, alias, taxid, unit, attribute, habitat, location, gazetteer]
+  parameters:
+    nbrc_id: NBRC_00100650
+    attribute: meo:MEO_0000198
+
+same_property_path:
+  variables: [Culture, attribute, gazetteer]

@@ -1,0 +1,18 @@
+nbrc:
+  output_dir: test/stanza
+  arguments:
+    - key: nbrc_id
+      example: NBRC_00012843
+      description: Identifier
+      required: true
+  variables:
+    - name: clade
+      label: Clade
+    - name: name
+      label: Name
+    - name: alias
+      label: Alias
+    - name: taxid
+      label: Taxonomy ID
+    - name: xref
+      label: XREF

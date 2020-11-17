@@ -119,7 +119,26 @@ class RDFConfig
         parent_variable(object_name)
       end
 
-      variables
+      variables.reverse
+    end
+
+    def property_path(object_name, start_subject = nil)
+      paths = []
+
+      loop do
+        triple = find_by_object_name(object_name)
+        break if triple.nil?
+
+        paths += triple.predicates.map(&:uri).reverse
+        object_name = triple.subject.name
+        break if object_name == start_subject
+      end
+
+      paths.reverse
+    end
+
+    def same_property_path_exist?(object_name)
+      property_path_map.select { |obj_name, prop_path| prop_path == property_path(object_name) }.size > 1
     end
 
     def [](idx)
@@ -175,6 +194,17 @@ class RDFConfig
 
     def add_triple(triple)
       @triples << triple
+    end
+
+    def property_path_map
+      return @property_path_map unless @property_path_map.nil?
+
+      @property_path_map = {}
+      object_names.each do |object_name|
+        @property_path_map[object_name] = property_path(object_name)
+      end
+
+      @property_path_map
     end
   end
 end

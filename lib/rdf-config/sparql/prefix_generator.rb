@@ -31,8 +31,6 @@ class RDFConfig
         prefixes = []
 
         variables.each do |variable_name|
-          next if model.subject?(variable_name)
-
           triple = model.find_by_object_name(variable_name)
           next if triple.nil?
 

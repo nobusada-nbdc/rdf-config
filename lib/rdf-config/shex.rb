@@ -53,7 +53,12 @@ class RDFConfig
         when Model::Literal
           "#{object.rdf_data_type} #{cardinality(predicate)}"
         when Model::ValueList
-          "#{object.value.map(&:rdf_data_type).uniq.join(' OR ')} #{cardinality(predicate)}"
+          case object.value.first
+          when Model::Subject
+            "IRI #{cardinality(predicate)}"
+          when Model::Literal
+            "#{object.value.map(&:rdf_data_type).uniq.join(' OR ')} #{cardinality(predicate)}"
+          end
         when Model::BlankNode
           "BNode #{cardinality(predicate)}"
         end

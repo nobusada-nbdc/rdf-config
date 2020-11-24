@@ -79,6 +79,10 @@ class RDFConfig
           setup_subject(subject, @config.model[i])
         end
 
+        #@subjects.each do |subject|
+        #  puts "===== #{subject.name} ====="
+        #  pp subject.as_object
+        #end
         @subjects
       end
 
@@ -201,6 +205,14 @@ class RDFConfig
 
       def add_as_object(subject_name, object)
         @as_object[subject_name] = object
+      end
+
+      def parent_subject_names
+        if used_as_object?
+          @as_object.keys
+        else
+          []
+        end
       end
 
       def as_object_name(subject_name)

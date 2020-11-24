@@ -71,7 +71,16 @@ class RDFConfig
 
     def find_by_object_name(object_name)
       if subject?(object_name)
-        @triples.select { |triple| triple.object.name == object_name }.first
+        @triples.select do |triple|
+          case triple.object
+          when Subject
+            triple.object.name == object_name
+          when ValueList
+            triple.object.value.select { |v| v.is_a?(Subject) }.map(&:name).include?(object_name)
+          else
+            false
+          end
+        end.first
       else
         @triples.select { |triple| triple.object_name == object_name }.first
       end
@@ -101,6 +110,47 @@ class RDFConfig
       @graph.object_value
     end
 
+    def parent_subject_name(object_name)
+      if subject?(object_name)
+        subject = find_subject(object_name)
+        if subject.used_as_object?
+          subject.as_object.keys.include?(object_name) ? nil : subject.as_object.keys.first
+        else
+          nil
+        end
+      else
+        triple = find_by_object_name(object_name)
+        if triple.nil?
+          nil
+        else
+          triple.subject.name
+        end
+      end
+    end
+
+    def parent_subject_name0(object_name)
+      if subject?(object_name)
+        return triple.subject.name unless triple.subject.used_as_object?
+      else
+        triple = find_by_object_name(object_name)
+        return nil if triple.nil?
+        triple.subject.as_object.values.map(&:value).uniq.first
+      end
+    end
+
+    def parent_subject_names(object_name)
+      subject_names = []
+      loop do
+        subject_name = parent_subject_name(object_name)
+        break if subject_name.nil? || subject_name == object_name
+
+        subject_names << subject_name
+        object_name = subject_name
+      end
+
+      subject_names.reverse
+    end
+
     def parent_variable(object_name)
       triple = find_by_object_name(object_name)
       return nil if triple.nil? || !triple.subject.used_as_object?
@@ -112,14 +162,28 @@ class RDFConfig
       variables = []
       loop do
         variable_name = parent_variable(object_name)
-        break if variable_name.nil?
+        break if variable_name.nil? || variable_name == object_name
 
         variables << variable_name
         object_name = variable_name
-        parent_variable(object_name)
       end
 
       variables.reverse
+    end
+
+    def predicate_path(object_name, start_subject = nil)
+      paths = []
+
+      loop do
+        triple = find_by_object_name(object_name)
+        break if triple.nil? || object_name == triple.subject.name
+
+        paths += triple.predicates.reverse
+        object_name = triple.subject.name
+        break if object_name == start_subject
+      end
+
+      paths.reverse
     end
 
     def property_path(object_name, start_subject = nil)
@@ -127,7 +191,7 @@ class RDFConfig
 
       loop do
         triple = find_by_object_name(object_name)
-        break if triple.nil?
+        break if triple.nil? || object_name == triple.subject.name
 
         paths += triple.predicates.map(&:uri).reverse
         object_name = triple.subject.name

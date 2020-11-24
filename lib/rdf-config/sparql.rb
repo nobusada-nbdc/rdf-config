@@ -6,6 +6,8 @@ require 'rdf-config/sparql/select_generator'
 require 'rdf-config/sparql/dataset_generator'
 require 'rdf-config/sparql/where_generator'
 
+# TODO: Output warning when variables not used in model.yaml are specified in variables key of sparql.yaml
+
 class RDFConfig
   class SPARQL
     DEFAULT_NAME = 'sparql'.freeze
@@ -98,6 +100,17 @@ class RDFConfig
         end
       else
         sparql_variable_name = triple.object.sparql_varname
+        #case triple.object
+        #when Model::Subject
+        #  object_names = triple.object.objects.map(&:name)
+        #  sparql_variable_name = if object_names.include?(variable_name)
+        #                           triple.subject.name
+        #                         else
+        #                           triple.object.as_object_name(triple.subject.name)
+        #                         end
+        #else
+        #  sparql_variable_name = triple.object.name
+        #end
       end
 
       if !sparql_variable_name.empty? && add_question_mark
@@ -112,6 +125,11 @@ class RDFConfig
         next if model.subject?(variable_name)
 
         triple = model.find_by_object_name(variable_name)
+        if triple.nil?
+          #STDERR.puts "WARNING: #{variable_name} is not used in model.yaml file."
+          next
+        end
+
         if triple.object.is_a?(Model::Subject)
           triple.object.sparql_varname = variable_name
         end

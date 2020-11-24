@@ -164,13 +164,21 @@ class RDFConfig
 
         prepare_sparql_variable_name
 
-        @property_path_map = {}
-        variables.each do |variable_name|
-          triple = model.find_by_object_name(variable_name)
-          next if triple.nil?
+        #@property_path_map = {}
+        #variables.each do |variable_name|
+        #  triple = model.find_by_object_name(variable_name)
+        #  next if triple.nil?
+        #
+        #  @property_path_map[triple.object_name] = model.property_path(triple.object_name)
+        #  @property_path_map[variable_name] = model.property_path(triple.object_name)
+        #end
 
-          @property_path_map[triple.object_name] = model.property_path(triple.object_name)
-          @property_path_map[variable_name] = model.property_path(triple.object_name)
+        @subjects_by_variables = []
+        variables.each do |variable_name|
+          object = model.find_object(variable_name)
+          if object.is_a?(Model::Subject)
+            @subjects_by_variables << object.name
+          end
         end
       end
 
@@ -204,6 +212,7 @@ class RDFConfig
       def generate_triple_by_variable(variable_name)
         @target_triple = model.find_by_object_name(variable_name)
         return if @target_triple.nil? || @target_triple.subject.name == variable_name
+        return if @target_triple.object.is_a?(Model::ValueList) && !@target_triple.object.value.select { |v| v.is_a?(Model::Subject) }.empty?
 
         if @target_triple.bnode_connecting? && model.same_property_path_exist?(variable_name)
           generate_triples_with_bnode
@@ -214,16 +223,34 @@ class RDFConfig
 
       def generate_triple_without_bnode
         object_name = @target_triple.object_name
-        return unless @property_path_map.key?(object_name)
 
-        subject = subject_by_object_name(object_name)
-        return if !variables.include?(subject.name) && !variables.include?(subject.as_object.values.map(&:name).first)
+        if model.same_property_path_exist?(object_name)
+          triple_in_model = model.find_by_object_name(object_name)
+          subject = model.subjects.first
+          property_paths = model.property_path(triple_in_model.subject.name)
+          add_triple(Triple.new(subject_instance(subject, subject.types, true),
+                                property_paths.join(PROPERTY_PATH_SEP),
+                                variable_instance(triple_in_model.subject.name)),
+                     model.predicate_path(triple_in_model.subject.name).select { |p| !p.required? }.size > 0)
+          add_triple(Triple.new(subject_instance(triple_in_model.subject, triple_in_model.subject.types, true),
+                                model.property_path(object_name, @target_triple.subject.name).join(PROPERTY_PATH_SEP),
+                                variable_instance(@target_triple.object.sparql_varname)),
+                     model.predicate_path(object_name, @target_triple.subject.name).select { |p| !p.required? }.size > 0)
+        else
+          subject = subject_by_object_name(object_name)
+          return if !variables_for_where.include?(subject.name)
+          #return if !variables.include?(subject.name) && !variables.include?(subject.as_object.values.map(&:name).first)
 
-        property_paths = model.property_path(object_name, subject.name)
-        add_triple(Triple.new(subject_instance(subject, subject.types),
-                              property_paths.join(PROPERTY_PATH_SEP),
-                              variable_instance(@target_triple.object.sparql_varname)),
-                   optional_phrase?(@target_triple.predicate))
+          property_paths = model.property_path(object_name, subject.name)
+          #add_triple(Triple.new(subject_instance(@target_triple.subject.types),
+          #                      predicate_uri,
+          #                      variable_instance(@target_triple.object_name)),
+          #           optional_phrase?(@target_triple.predicate))
+          add_triple(Triple.new(subject_instance(subject, subject.types),
+                                property_paths.join(PROPERTY_PATH_SEP),
+                                variable_instance(@target_triple.object.sparql_varname)),
+                     model.predicate_path(object_name, subject.name).select { |p| !p.required? }.size > 0)
+        end
       end
 
       def predicate_uri
@@ -236,20 +263,55 @@ class RDFConfig
       end
 
       def generate_triples_with_bnode
+        object_name = @target_triple.object_name
+        #return unless @property_path_map.key?(object_name)
+
         bnode_rdf_types = model.bnode_rdf_types(@target_triple)
 
         if use_property_path?(bnode_rdf_types)
-          add_triple(Triple.new(subject_instance(@target_triple.subject),
-                                @target_triple.property_path(PROPERTY_PATH_SEP),
-                                variable_instance(@target_triple.object_name)),
-                     optional_phrase?(@target_triple.predicate)
-          )
+          subject = subject_by_object_name(object_name)
+          return if !variables_for_where.include?(subject.name)
+          #add_triple(Triple.new(subject_instance(@target_triple.subject),
+          #                      @target_triple.property_path(PROPERTY_PATH_SEP),
+          #                      variable_instance(@target_triple.object_name)),
+          #           optional_phrase?(@target_triple.predicate)
+          #)
+          property_paths = model.property_path(object_name, subject.name)
+          add_triple(Triple.new(subject_instance(subject, subject.types),
+                                property_paths.join(PROPERTY_PATH_SEP),
+                                variable_instance(@target_triple.object.sparql_varname)),
+                     model.predicate_path(object_name, subject.name).select { |p| !p.required? }.size > 0)
         else
           generate_triples_with_bnode_rdf_types(bnode_rdf_types)
         end
       end
 
       def generate_triples_with_bnode_rdf_types(bnode_rdf_types)
+        subject_name = @target_triple.subject.name
+        parent_subject_names = model.parent_subject_names(subject_name)
+        start_subject_name = nil
+        parent_subject_names.reverse.each do |parent_subject_name|
+          if variables.include?(parent_subject_name)
+            start_subject_name = parent_subject_name
+            break
+          end
+        end
+
+        if start_subject_name.nil?
+          start_subject = model.subjects.first
+        else
+          start_subject = model.find_subject(start_subject_name)
+        end
+
+        #add_triple(Triple.new(subject_instance(model.find_subject(start_subject.name), start_subject.types),
+        #                      'rdf:type',
+        #                      variable_instance(start_subject.name)),
+        #           false)
+        add_triple(Triple.new(subject_instance(model.find_subject(start_subject.name), start_subject.types),
+                              model.property_path(subject_name, start_subject.name).join(PROPERTY_PATH_SEP),
+                              variable_instance(subject_name)),
+                   false)
+
         subject = subject_instance(@target_triple.subject, @target_triple.subject.types)
         predicates = @target_triple.predicates
 
@@ -440,7 +502,7 @@ class RDFConfig
         !triples.map(&:subject).select { |subj| subj == subject }.empty?
       end
 
-      def subject_instance(subject, rdf_types = nil)
+      def subject_instance(subject, rdf_types = nil, use_subject_name = false)
         if subject.is_a?(Array)
           rdf_types = subject
           subject = @target_triple.subject
@@ -449,7 +511,12 @@ class RDFConfig
         if subject.blank_node? && subject.types.size > 1
           blank_node([], subject.types)
         else
-          v_inst = variable_instance(variable_name_for_sparql(subject.name))
+          if use_subject_name
+            v_inst = variable_instance(subject.name)
+          else
+            v_inst = variable_instance(variable_name_for_sparql(subject.name))
+          end
+
           v_inst.rdf_types = rdf_types if !rdf_types.nil?
 
           v_inst
@@ -505,17 +572,39 @@ class RDFConfig
       def hidden_variables
         variable_names = []
         variables.each do |variable_name|
-          variable_names += model.parent_variables(variable_name)
+          next if model.subject?(variable_name)
+
+          #variable_names += model.parent_variables(variable_name)
+
+          subject = subject_by_object_name(variable_name)
+          variable_names << subject.name unless subject.nil?
         end
 
         variable_names.flatten.uniq
       end
 
       def variables_for_where
-        variables
+        (variables + hidden_variables).uniq
       end
 
       def subject_by_object_name(object_name)
+        parent_subject_names = model.parent_subject_names(object_name)
+        object_name_for_subject = nil
+        parent_subject_names.reverse.each do |subject_name|
+          if @subjects_by_variables.include?(subject_name)
+            object_name_for_subject = subject_name
+            break
+          end
+        end
+
+        if object_name_for_subject.nil?
+          model.find_subject(parent_subject_names.first)
+        else
+          model.find_subject(object_name_for_subject)
+        end
+      end
+
+      def subject_by_object_name0(object_name)
         object_name_for_subject = nil
         model.parent_variables(object_name).reverse.each do |variable_name|
           object_name_for_subject = variable_name

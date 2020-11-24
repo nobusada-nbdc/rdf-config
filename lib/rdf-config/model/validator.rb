@@ -73,6 +73,7 @@ class RDFConfig
 
       def validate_object(object)
         add_variable_name(object.name) if !object.is_a?(BlankNode) && !object.is_a?(Subject)
+
         validate_prefix(object.value) if object.is_a?(URI)
       end
 

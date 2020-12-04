@@ -1,0 +1,21 @@
+- Class obo:GO_0044255:
+  - a: owl:Class
+  - obo:IAO_0000115+: # definition
+    - node_2: "The chemical reactions and pathways involving lipids, as carried out by individual cells."
+    - node_3: "The chemical reactions and pathways involving lipids, as carried out by individual cells."
+  - oboinowl:hasDbXref+:
+    - node_4: "Reactome:REACT_28392"
+  - oboinowl:hasExactSynonym+:
+    - node_5: "cellular lipid metabolism"
+  - oboinowl:hasOBONamespace+:
+    - node_6: "biological_process"
+  - oboinowl:id+:
+    - node_7: "GO:0044255"
+  - oboinowl:inSubset+:
+    - annotationproperty: p1:goslim_pir
+  - rdfs:label+:
+    - class_label: "cellular lipid metabolic process"
+    - class_label: "cellular lipid metabolic process"
+  - rdfs:subClassOf+:
+    - node_11: obo:GO_0044237 # cellular metabolic process
+

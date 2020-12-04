@@ -102,9 +102,14 @@ class RDFConfig
         object_data = predicate_object_hash[predicate_uri]
         case object_data
         when String, Hash
+          object = object_instance(object_data)
           predicate.add_object(object_instance(object_data))
         when Array
           object_data.each do |obj_data|
+            object = object_instance(obj_data)
+            if object.name == 'see_also'
+              #puts object.value.inspect
+            end
             predicate.add_object(object_instance(obj_data))
           end
         end

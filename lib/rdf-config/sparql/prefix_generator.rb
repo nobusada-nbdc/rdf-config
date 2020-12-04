@@ -31,25 +31,27 @@ class RDFConfig
         prefixes = []
 
         variables.each do |variable_name|
-          #next if model.subject?(variable_name)
+          triples = model.triples_by_object_name(variable_name)
+          next if triples.nil?
 
-          triple = model.find_by_object_name(variable_name)
-          next if triple.nil?
-
-          uris = triple.subject.types.flatten + triple.predicates.map(&:uri).flatten + model.bnode_rdf_types(triple).flatten
-          case triple.object
-          when Model::Subject
-            uris += triple.object.types.flatten
-          when Model::ValueList
-            triple.object.value.each do |v|
-              uris += v.types.flatten if v.is_a?(Model::Subject)
+          triples.each do |triple|
+            uris = triple.subject.types.flatten +
+              triple.predicates.map(&:uri).flatten +
+              model.bnode_rdf_types(triple).flatten
+            case triple.object
+            when Model::Subject
+              uris += triple.object.types.flatten
+            when Model::ValueList
+              triple.object.value.each do |v|
+                uris += v.types.flatten if v.is_a?(Model::Subject)
+              end
             end
-          end
 
-          uris.each do |uri|
-            if /\A(\w+):\w+\z/ =~ uri
-              prefix = Regexp.last_match(1)
-              prefixes << prefix unless prefixes.include?(prefix)
+            uris.each do |uri|
+              if /\A(\w+):\w+\z/ =~ uri
+                prefix = Regexp.last_match(1)
+                prefixes << prefix unless prefixes.include?(prefix)
+              end
             end
           end
         end

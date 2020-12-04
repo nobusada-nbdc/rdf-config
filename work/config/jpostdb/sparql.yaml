@@ -19,6 +19,8 @@ peptide_mapping:
   variables: [protein_label, Protein, Peptide, aa_sequence, begin, end]
 
 same_property_path:
-  variables: [JpostDataset, PeptideSpectrumMatch, retention_time, jpost_score_in_psm, charge_state]
+  variables: [retention_time, jpost_score_in_psm, charge_state]
+  #variables: [lab_head, retention_time, jpost_score_in_psm, charge_state]
+  #variables: [JpostDataset, PeptideSpectrumMatch, retention_time, jpost_score_in_psm, charge_state]
   #variables: [Protein, PeptideSpectrumMatch, retention_time, jpost_score_in_psm, charge_state]
   #variables: [Peptide, PeptideSpectrumMatch, retention_time, jpost_score_in_psm, charge_state]

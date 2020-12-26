@@ -682,6 +682,8 @@
     - uniprot_cross_reference: UniprotCrossReference # CHEMBL_TC_1573 UniProt Reference: P18090
     - interpro_cross_reference: InterproCrossReference # CHEMBL_TC_17840 InterPro Reference: IPR000276
     - intact_cross_reference: IntactCrossReference # CHEMBL_TC_1573 IntAct Reference: P18090
+    - ensembl_ensg_reference: <http://identifiers.org/ensembl/ENSG00000143320>
+    - pdb_reference: PDBCrossReference # http://identifiers.org/pdb/1CBQ
   - cco:taxonomy*:
     - taxonomy_id: <http://identifiers.org/taxonomy/10116>
     - taxonomy_ncbi: <http://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=10116>
@@ -770,3 +772,12 @@
   - a: cco:DrugbankRef
   - rdfs:label:
     - drug_bank_cross_reference_label: "CHEMBL107360 DrugBank Reference: DB13246"
+- PDBCrossReference <http://identifiers.org/pdb/1CBQ>:
+  - a: 
+    - cco:ProteinDataBankRef
+    - <http://identifiers.org/pdb>
+    - <http://rdf.ebi.ac.uk/terms/ensembl/EnsemblDBEntry>
+  - rdfs:label:
+    - pdb_cross_reference_label: "1CBQ", "CHEMBL_TC_1028 PDBe Reference: 1CBQ"
+  - dc:identifier:
+    - pdb_id: "1CBQ"
